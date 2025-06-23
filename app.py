@@ -5,6 +5,7 @@ import tempfile
 from werkzeug.utils import secure_filename
 from datetime import datetime
 import traceback
+from dotenv import load_dotenv
 
 # Import our existing workflow functions
 from pa_form_automation_workflow import (
@@ -12,6 +13,8 @@ from pa_form_automation_workflow import (
     extract_info_with_openai,
     map_to_pa_form_fields
 )
+
+load_dotenv()
 
 app = Flask(__name__)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max file size
@@ -149,4 +152,4 @@ def health_check():
     return jsonify({'status': 'healthy', 'timestamp': datetime.now().isoformat()})
 
 if __name__ == '__main__':
-    app.run(debug=True, host='0.0.0.0', port=5001) 
+    app.run(debug=True, host='0.0.0.0', port=5001)
