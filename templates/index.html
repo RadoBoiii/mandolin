@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PA Form Automation System</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .drop-zone {
+            border: 2px dashed #cbd5e0;
+            transition: all 0.3s ease;
+        }
+        .drop-zone.dragover {
+            border-color: #4299e1;
+            background-color: #ebf8ff;
+        }
+        .loading-spinner {
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        .fade-in {
+            animation: fadeIn 0.5s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    <div class="container mx-auto px-4 py-8">
+        <!-- Header -->
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-gray-800 mb-2">
+                <i class="fas fa-file-medical text-blue-600 mr-3"></i>
+                PA Form Automation System
+            </h1>
+            <p class="text-gray-600 text-lg">
+                Upload referral packages to automatically extract patient information and map to PA form fields
+            </p>
+        </div>
+
+        <!-- Upload Section -->
+        <div class="max-w-4xl mx-auto">
+            <div class="bg-white rounded-lg shadow-lg p-8 mb-8">
+                <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                    <i class="fas fa-upload text-green-600 mr-2"></i>
+                    Upload Referral Package
+                </h2>
+                
+                <!-- File Upload Area -->
+                <div id="dropZone" class="drop-zone rounded-lg p-12 text-center cursor-pointer mb-6">
+                    <div class="space-y-4">
+                        <i class="fas fa-cloud-upload-alt text-6xl text-gray-400"></i>
+                        <div>
+                            <p class="text-xl font-medium text-gray-700 mb-2">
+                                Drag and drop your PDF file here
+                            </p>
+                            <p class="text-gray-500">or</p>
+                            <button id="browseBtn" class="mt-2 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-6 rounded-lg transition duration-200">
+                                Browse Files
+                            </button>
+                        </div>
+                        <p class="text-sm text-gray-400">Only PDF files are supported (max 16MB)</p>
+                    </div>
+                    <input type="file" id="fileInput" accept=".pdf" class="hidden">
+                </div>
+
+                <!-- Progress Bar -->
+                <div id="progressContainer" class="hidden mb-6">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-700">Processing...</span>
+                        <span id="progressText" class="text-sm text-gray-500">0%</span>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-2">
+                        <div id="progressBar" class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                    </div>
+                </div>
+
+                <!-- Status Messages -->
+                <div id="statusContainer" class="hidden">
+                    <div id="statusMessage" class="p-4 rounded-lg"></div>
+                </div>
+            </div>
+
+            <!-- Results Section -->
+            <div id="resultsContainer" class="hidden space-y-6">
+                <!-- PA Form Fields -->
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">
+                        <i class="fas fa-clipboard-list text-purple-600 mr-2"></i>
+                        PA Form Fields
+                    </h3>
+                    <div id="paFieldsGrid" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <!-- Fields will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Structured Information -->
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">
+                        <i class="fas fa-database text-green-600 mr-2"></i>
+                        Extracted Information
+                    </h3>
+                    <div id="structuredInfo" class="bg-gray-50 rounded-lg p-4">
+                        <pre id="jsonOutput" class="text-sm text-gray-700 whitespace-pre-wrap"></pre>
+                    </div>
+                </div>
+
+                <!-- Extracted Text Preview -->
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">
+                        <i class="fas fa-file-alt text-blue-600 mr-2"></i>
+                        Extracted Text Preview
+                    </h3>
+                    <div id="textPreview" class="bg-gray-50 rounded-lg p-4 max-h-64 overflow-y-auto">
+                        <p id="extractedText" class="text-sm text-gray-700 whitespace-pre-wrap"></p>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="bg-white rounded-lg shadow-lg p-8">
+                    <h3 class="text-2xl font-semibold text-gray-800 mb-6">
+                        <i class="fas fa-cogs text-orange-600 mr-2"></i>
+                        Actions
+                    </h3>
+                    <div class="flex flex-wrap gap-4">
+                        <button id="downloadReportBtn" class="bg-green-600 hover:bg-green-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200">
+                            <i class="fas fa-download mr-2"></i>
+                            Download Report
+                        </button>
+                        <button id="processAnotherBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200">
+                            <i class="fas fa-plus mr-2"></i>
+                            Process Another File
+                        </button>
+                        <button id="clearResultsBtn" class="bg-gray-600 hover:bg-gray-700 text-white font-medium py-3 px-6 rounded-lg transition duration-200">
+                            <i class="fas fa-trash mr-2"></i>
+                            Clear Results
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const browseBtn = document.getElementById('browseBtn');
+        const progressContainer = document.getElementById('progressContainer');
+        const progressBar = document.getElementById('progressBar');
+        const progressText = document.getElementById('progressText');
+        const statusContainer = document.getElementById('statusContainer');
+        const statusMessage = document.getElementById('statusMessage');
+        const resultsContainer = document.getElementById('resultsContainer');
+        const paFieldsGrid = document.getElementById('paFieldsGrid');
+        const jsonOutput = document.getElementById('jsonOutput');
+        const extractedText = document.getElementById('extractedText');
+        const downloadReportBtn = document.getElementById('downloadReportBtn');
+        const processAnotherBtn = document.getElementById('processAnotherBtn');
+        const clearResultsBtn = document.getElementById('clearResultsBtn');
+
+        // Event Listeners
+        browseBtn.addEventListener('click', () => fileInput.click());
+        fileInput.addEventListener('change', handleFileSelect);
+        dropZone.addEventListener('dragover', handleDragOver);
+        dropZone.addEventListener('dragleave', handleDragLeave);
+        dropZone.addEventListener('drop', handleDrop);
+        downloadReportBtn.addEventListener('click', downloadReport);
+        processAnotherBtn.addEventListener('click', resetForm);
+        clearResultsBtn.addEventListener('click', clearResults);
+
+        // Drag and Drop Handlers
+        function handleDragOver(e) {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFile(files[0]);
+            }
+        }
+
+        function handleFileSelect(e) {
+            const file = e.target.files[0];
+            if (file) {
+                handleFile(file);
+            }
+        }
+
+        function handleFile(file) {
+            if (!file.type.includes('pdf')) {
+                showStatus('Please select a PDF file.', 'error');
+                return;
+            }
+
+            if (file.size > 16 * 1024 * 1024) {
+                showStatus('File size must be less than 16MB.', 'error');
+                return;
+            }
+
+            uploadFile(file);
+        }
+
+        function uploadFile(file) {
+            const formData = new FormData();
+            formData.append('file', file);
+
+            // Show progress
+            showProgress();
+            showStatus(`Processing ${file.name}...`, 'info');
+
+            fetch('/upload', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                hideProgress();
+                if (data.error) {
+                    showStatus(data.error, 'error');
+                } else {
+                    showStatus('File processed successfully!', 'success');
+                    displayResults(data);
+                }
+            })
+            .catch(error => {
+                hideProgress();
+                showStatus('Upload failed. Please try again.', 'error');
+                console.error('Error:', error);
+            });
+        }
+
+        function showProgress() {
+            progressContainer.classList.remove('hidden');
+            let progress = 0;
+            const interval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                updateProgress(progress);
+            }, 500);
+
+            // Store interval for cleanup
+            window.progressInterval = interval;
+        }
+
+        function hideProgress() {
+            progressContainer.classList.add('hidden');
+            if (window.progressInterval) {
+                clearInterval(window.progressInterval);
+            }
+            updateProgress(100);
+        }
+
+        function updateProgress(percent) {
+            progressBar.style.width = `${percent}%`;
+            progressText.textContent = `${Math.round(percent)}%`;
+        }
+
+        function showStatus(message, type) {
+            statusContainer.classList.remove('hidden');
+            statusMessage.className = `p-4 rounded-lg ${getStatusClass(type)}`;
+            statusMessage.innerHTML = `
+                <div class="flex items-center">
+                    <i class="${getStatusIcon(type)} mr-3"></i>
+                    <span>${message}</span>
+                </div>
+            `;
+        }
+
+        function getStatusClass(type) {
+            switch (type) {
+                case 'success': return 'bg-green-100 text-green-800 border border-green-200';
+                case 'error': return 'bg-red-100 text-red-800 border border-red-200';
+                case 'info': return 'bg-blue-100 text-blue-800 border border-blue-200';
+                default: return 'bg-gray-100 text-gray-800 border border-gray-200';
+            }
+        }
+
+        function getStatusIcon(type) {
+            switch (type) {
+                case 'success': return 'fas fa-check-circle';
+                case 'error': return 'fas fa-exclamation-circle';
+                case 'info': return 'fas fa-info-circle';
+                default: return 'fas fa-info-circle';
+            }
+        }
+
+        function displayResults(data) {
+            resultsContainer.classList.remove('hidden');
+            resultsContainer.classList.add('fade-in');
+
+            // Display PA Form Fields
+            displayPAFields(data.pa_form_fields);
+
+            // Display Structured Information
+            try {
+                const jsonData = typeof data.structured_info === 'string' 
+                    ? JSON.parse(data.structured_info) 
+                    : data.structured_info;
+                jsonOutput.textContent = JSON.stringify(jsonData, null, 2);
+            } catch (e) {
+                jsonOutput.textContent = data.structured_info;
+            }
+
+            // Display Extracted Text
+            extractedText.textContent = data.extracted_text;
+
+            // Store report data for download
+            window.currentReport = data.report;
+        }
+
+        function displayPAFields(fields) {
+            paFieldsGrid.innerHTML = '';
+            
+            Object.entries(fields).forEach(([field, value]) => {
+                const fieldDiv = document.createElement('div');
+                fieldDiv.className = 'bg-gray-50 rounded-lg p-4';
+                fieldDiv.innerHTML = `
+                    <label class="block text-sm font-medium text-gray-700 mb-2">${field}</label>
+                    <div class="text-gray-900 font-mono text-sm break-words">
+                        ${Array.isArray(value) ? value.join(', ') : value || 'N/A'}
+                    </div>
+                `;
+                paFieldsGrid.appendChild(fieldDiv);
+            });
+        }
+
+        function downloadReport() {
+            if (!window.currentReport) return;
+            
+            const blob = new Blob([window.currentReport], { type: 'text/markdown' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `pa_form_report_${new Date().toISOString().slice(0, 19).replace(/:/g, '-')}.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function resetForm() {
+            clearResults();
+            fileInput.value = '';
+            statusContainer.classList.add('hidden');
+        }
+
+        function clearResults() {
+            resultsContainer.classList.add('hidden');
+            window.currentReport = null;
+        }
+    </script>
+</body>
+</html> 
