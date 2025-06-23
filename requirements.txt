@@ -17,7 +17,7 @@ spacy>=3.6.0
 # Utilities
 python-dotenv==1.0.0
 tqdm>=4.65.0
-pytest>=7.4.0
+pytest>=7.4.0 
 
 # Added from the code block
 flask==2.3.3
